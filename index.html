@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>繁简字消消乐</title>
+<style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #1f1f2e;
+  color: #fff;
+  text-align: center;
+}
+
+#topbar {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px;
+}
+
+#board {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+}
+
+.card {
+  width: 60px;
+  height: 60px;
+  background: #2a2a3d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.card:hover {
+  transform: scale(1.1);
+}
+
+.selected {
+  box-shadow: 0 0 10px #6cf;
+}
+
+.wrong {
+  background: #ff5c5c;
+  transform: translateX(-5px);
+}
+
+.done {
+  background: #444;
+  opacity: 0.4;
+}
+
+#feedback {
+  height: 30px;
+  margin-top: 10px;
+  color: #a0e7a0;
+}
+
+button {
+  margin: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div id="topbar">
+  <div id="score">分数：0</div>
+  <div id="combo">连击：0</div>
+  <div id="timer">时间：60</div>
+</div>
+
+<div>
+  <button onclick="startLevel(0)">第一关</button>
+  <button onclick="startLevel(1)">第二关</button>
+  <button onclick="startLevel(2)">第三关</button>
+</div>
+
+<div id="board"></div>
+<div id="feedback"></div>
+
+<script>
+const levels = [
+  // 第一关
+  [
+    {simp:"御",trad:["禦","御"],words:["御者","抵禦"]},
+    {simp:"后",trad:["後","后"],words:["之后","皇后"]},
+    {simp:"发",trad:["發","髮"],words:["发展","头髮"]},
+    {simp:"干",trad:["乾","幹"],words:["乾燥","树幹"]}
+  ],
+
+  // 第二关
+  [
+    {simp:"复",trad:["復","複"],words:["恢复","重复"]},
+    {simp:"系",trad:["係","系"],words:["关系","系统"]},
+    {simp:"台",trad:["臺","台"],words:["臺灣","舞台"]},
+    {simp:"面",trad:["麵","面"],words:["麵条","面孔"]}
+  ],
+
+  // 第三关
+  [
+    {simp:"余",trad:["餘","余"],words:["剩餘","余下"]},
+    {simp:"斗",trad:["鬥","斗"],words:["争鬥","斗笠"]},
+    {simp:"钟",trad:["鐘","鍾"],words:["时鐘","鍾情"]},
+    {simp:"适",trad:["適","适"],words:["适合","舒適"]}
+  ]
+];
+
+let currentLevel = [];
+let selected = null;
+let score = 0;
+let combo = 0;
+let time = 60;
+let timerInterval;
+
+function startLevel(i) {
+  currentLevel = JSON.parse(JSON.stringify(levels[i]));
+  score = 0;
+  combo = 0;
+  time = 60;
+
+  updateUI();
+  render();
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    time--;
+    document.getElementById("timer").innerText = "时间：" + time;
+
+    if (time <= 0) {
+      clearInterval(timerInterval);
+      saveScore();
+      alert("时间到！最终得分：" + score);
+    }
+  }, 1000);
+}
+
+function render() {
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+
+  currentLevel.forEach((item, index) => {
+    // 简体
+    const simp = document.createElement("div");
+    simp.className = "card";
+    simp.innerText = item.simp;
+    simp.onclick = () => selectSimp(index);
+    board.appendChild(simp);
+
+    // 繁体
+    item.trad.forEach(t => {
+      const trad = document.createElement("div");
+      trad.className = "card";
+      trad.innerText = t;
+      trad.onclick = () => selectTrad(index, t, trad);
+      board.appendChild(trad);
+    });
+  });
+}
+
+function selectSimp(index) {
+  selected = {index, matched:[]};
+}
+
+function selectTrad(index, char, el) {
+  if (!selected || selected.index !== index) {
+    wrong(el);
+    return;
+  }
+
+  if (!selected.matched.includes(char)) {
+    selected.matched.push(char);
+    el.classList.add("selected");
+  }
+
+  const item = currentLevel[index];
+
+  if (selected.matched.length === item.trad.length) {
+    success(item);
+    markDone(index);
+    selected = null;
+  }
+}
+
+function success(item) {
+  combo++;
+  score += 10 * combo;
+
+  if (item.trad.length > 1) {
+    document.getElementById("feedback").innerText =
+      item.words.join(" / ");
+  }
+
+  updateUI();
+}
+
+function wrong(el) {
+  combo = 0;
+  score -= 5;
+
+  el.classList.add("wrong");
+  setTimeout(() => el.classList.remove("wrong"), 300);
+
+  updateUI();
+}
+
+function markDone(index) {
+  const cards = document.querySelectorAll("#board .card");
+  cards.forEach(c => {
+    if (c.innerText === currentLevel[index].simp ||
+        currentLevel[index].trad.includes(c.innerText)) {
+      c.classList.add("done");
+    }
+  });
+}
+
+function updateUI() {
+  document.getElementById("score").innerText = "分数：" + score;
+  document.getElementById("combo").innerText = "连击：" + combo;
+}
+
+function saveScore() {
+  const best = localStorage.getItem("bestScore") || 0;
+  if (score > best) {
+    localStorage.setItem("bestScore", score);
+    alert("新纪录！🎉");
+  }
+}
+</script>
+
+</body>
+</html>
